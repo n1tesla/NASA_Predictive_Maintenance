@@ -76,7 +76,8 @@ def convert_rul_to_label(df,w1=30,w0=15):
 def gen_sequence(id_df,seq_length,seq_cols):
     data_matrix=id_df[seq_cols].values
     num_elements=data_matrix.shape[0]
-    for start,stop in zip(range(0,num_elements-seq_length),range(seq_length,num_elements)):
+    for start,stop in zip(range(0,num_elements-seq_length),range(seq_length,num_elements),4):
+
         yield data_matrix[start:stop,:]
 
 def gen_labels(id_df,seq_length,label):

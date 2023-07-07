@@ -36,11 +36,11 @@ def lstm_train(seq_array, label_array, sequence_length):
 
 from sklearn.metrics import mean_squared_error
 from keras_tuner import HyperModel
-from tensorflow.keras.layers. import Dense,LSTM, Dropout,Input,Activation
+from keras.layers import Dense,LSTM, Dropout,Input,Activation
 # from tensorflow.keras.layers.core import Activation
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers.experimental import RMSprop
+from keras.optimizers import Adam
+from keras.models import Model
+from keras.optimizers import RMSprop
 # from metrics import evaluate
 
 class LSTM_regression_tuner(HyperModel):

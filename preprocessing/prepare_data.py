@@ -4,12 +4,14 @@ import numpy as np
 # before breaking cycles
 
 class DATA_PREPARATION:
-    def __init__(self,df_train,df_test,features,id_features):
+    def __init__(self,df_train,df_test,features:list,id_features:list,window_size:int,stride_size:int):
         self.df_train=df_train
         self.df_test=df_test
         self.features=features
         self.id_features=id_features
-
+        self.window_size=window_size
+        self.stride_size=stride_size
+        self.dataset_dict={}
 
     def scale_data(self):
         from sklearn.preprocessing import MinMaxScaler, StandardScaler
@@ -18,26 +20,11 @@ class DATA_PREPARATION:
         # cols_normalize = self.df_train.columns.difference(non_scale_cols)
         standard_scaler = StandardScaler()
         self.df_train.loc[:,self.features+['cycle_norm']]=standard_scaler.fit_transform(self.df_train.loc[:,self.features+['cycle_norm']].values)
+        self.df_test['cycle_norm']=self.df_test['time_in_cycles']
+        self.df_test.loc[:,self.features+['cycle_norm']]=standard_scaler.transform((self.df_test.loc[:,self.features+['cycle_norm']].values))
 
 
-        # scaled_train_df = pd.DataFrame(standard_scaler.fit_transform(self.df_train[cols_normalize]), columns=cols_normalize,
-        #                                index=self.df_train.index)
-        # join_df = self.df_train[self.df_train.columns.difference(cols_normalize)].join(scaled_train_df)
-        # train_df = join_df.reindex(columns=self.df_train.columns)
-        # print(f"train_df >> {train_df.head()}")
-        # print("\n")
-        self.df_test.loc[:,self.features+['cycle_norm']]=standard_scaler.transform((self.df_test.loc[:,self.features]+['cycle_norm']))
-
-        # test_df = self.df_test.drop(columns=['setting_1', 'setting_2', 'BypassDuctP', 'CorrectedCoreSpeed', 'max'])
-        # test_df['cycle_norm'] = test_df['time_in_cycles']
-        # norm_test_df = pd.DataFrame(standard_scaler.transform(test_df[cols_normalize]),
-        #                             columns=cols_normalize,
-        #                             index=test_df.index)
-        # test_join_df = test_df[test_df.columns.difference(cols_normalize)].join(norm_test_df)
-        # test_df = test_join_df.reindex(columns=test_df.columns)
-        # test_df = test_df.reset_index(drop=True)
-
-        return self.df_train,self.df_test
+        return standard_scaler
 
     def gen_sequence(self,id_df, seq_length, seq_cols, slide_size):
 
@@ -48,9 +35,6 @@ class DATA_PREPARATION:
                                range(seq_length, num_elements, slide_size)):
             yield data_matrix[start:stop, :]
         # TODO: generate all sequence in gen_sequence
-        # sequence_cols=list(train_df.columns[:-3])
-        # seq_gen = (list(gen_sequence(train_df[train_df['unit_number']==id], sequence_length, sequence_cols))
-        #                for id in train_df['unit_number'].unique())
 
     def gen_labels(self,id_df, seq_length, label, slide_size):
         labels = []
@@ -61,6 +45,50 @@ class DATA_PREPARATION:
             labels.append(data_matrix[i])
         return np.array(labels)
 
+    def SlidingWindow(self,df):
+        WindowedX,WindowedY=[],[]
+        UniqueIds=df['unit_number'].unique()
+
+        for unique in UniqueIds:
+            Split_Data=df['unit_number'].isin([unique])
+            SplitDataX=df.loc[Split_Data,self.features].to_numpy()
+            SplitDataY=df.loc[Split_Data,'RUL'].to_numpy()
+
+            if SplitDataX.shape[0]>=self.window_size:
+                WindowedX.append(self.extract_window(SplitDataX,self.window_size,self.stride_size))
+                WindowedY.append(self.extract_labels(SplitDataY,self.window_size,self.stride_size))
+
+        WindowedX=np.concatenate(WindowedX,axis=0)
+        WindowedY=np.concatenate(WindowedY,axis=0)
+        return WindowedX,WindowedY
+    def extract_window(self,arr,size,stride):
+        examples=[]
+        min_len=size-1
+        max_len=len(arr)-size
+        for i in range(0, max_len + 1, stride):
+            example = arr[i:size + i]
+            examples.append(np.expand_dims(example, 0))
+        return np.vstack(examples)
+
+    def extract_labels(self,arr,size,stride):
+        examples=[]
+        max_len=len(arr)-size
+        for i in range(-1,max_len,stride):
+            examples.append(arr[size+i])
+            # examples.append(arr_2[i])
+        return np.array(examples)
+
+    def create_dataset(self):
+        self.dataset_dict['df_train']=self.df_train
+        # self.dataset_dict['df_val']=None
+        # self.dataset_dict['df_test']=None
+        self.scale_data()
+        for k,v in self.dataset_dict.items():
+            self.dataset_dict[k]=self.SlidingWindow(v)
+
+
+
+
 def add_rul_column(data, factor = 0):
     df = data.copy()
     fd_RUL = df.groupby('unit_number')['time_in_cycles'].max().reset_index()
@@ -70,7 +98,6 @@ def add_rul_column(data, factor = 0):
     df['RUL'] = df['max'] - df['time_in_cycles']
     df.drop(columns=['max'],inplace = True)
     return df[df['time_in_cycles'] > factor]
-
 
 def extract_max_rul(test_df,df_truth):
     rul = pd.DataFrame(test_df.groupby('unit_number')['time_in_cycles'].max()).reset_index()

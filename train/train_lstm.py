@@ -1,8 +1,62 @@
 import os
-from datetime import datetime
-from preprocessing.prepare_data import convert_rul_to_label,scale_data,\
-    gen_sequence,gen_labels
+import datetime
+
+import pandas as pd
+
+from preprocessing.prepare_data import convert_rul_to_label
 import numpy as np
+
+
+
+
+import keras_tuner
+from keras_tuner.tuners import BayesianOptimization
+from model.lstm import LSTM_regression_model
+import tensorflow as tf
+class LSTM:
+    def __init__(self,X_train,y_train,lr:float,max_trials:int,batch_size:int,epochs=5):
+        self.X_train=X_train
+        self.y_train=y_train
+        self.lr=lr
+        self.max_trials=max_trials
+        self.batch_size=batch_size
+        self.epochs=epochs
+
+    def search_hyper_param(self):
+        input_shape=self.X_train.shape[1:]
+        hypermodel=LSTM_regression_model(input_shape,self.lr,1)
+        early_stop=tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=5)
+        #ReduceLROnPlateau=tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=0.5,patience=3,min_lr=1e-8)
+        tuner=BayesianOptimization(hypermodel,objective=keras_tuner.Objective("val_loss",direction="min")
+                                   ,seed=1,max_trials=self.max_trials, directory=os.path.normpath('C:/'),
+                             project_name='/RS/Ihtar_Model_Results_RS' + datetime.datetime.now().strftime("%Y%m%d_%H%M")) #BayessianOptimizasyon classından instance oluştur.
+        tuner.search_space_summary()
+        tuner.search(self.X_train,self.y_train,validation_split=0.2,callbacks=[early_stop],batch_size=self.batch_size,
+                     verbose=1,epochs=self.epochs)
+        best_hps=tuner.get_best_hyperparameters(num_trials=2)
+
+        df_batch_results=pd.DataFrame([])
+
+        for i,trial in enumerate(best_hps):
+
+            model=tuner.hypermodel.build(trial)
+            history=model.fit(self.X_train,self.y_train,validation_split=0.2)
+            model.save("saved_model/my_model")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def lstm_data_preprocessing(train_df,test_df,truth_df):
 
@@ -38,26 +92,3 @@ def lstm_data_preprocessing(train_df,test_df,truth_df):
     print(label_array)
 
     return seq_array, label_array, test_df, sequence_length, sequence_cols
-
-
-import keras_tuner
-from keras_tuner.tuners import BayesianOptimization
-from model.lstm import LSTM_regression_tuner
-import tensorflow as tf
-class TRAIN_LSTM:
-    def __init__(self,X_train,y_train,lr,max_trials):
-        self.X_train=X_train
-        self.y_train=y_train
-        self.lr=lr
-        self.max_trials=max_trials
-
-
-    def train(self):
-        hypermodel=LSTM_regression_tuner(self.X_train.shape,self.lr)
-        early_stop=tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=5)
-        #ReduceLROnPlateau=tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=0.5,patience=3,min_lr=1e-8)
-        tuner=BayesianOptimization(hypermodel,objective=keras_tuner.Objective("val_loss",direction="min")
-                                   ,seed=1,max_trials=self.max_trials, directory=os.path.normpath('C:/'),
-                             project_name='/RS/İhtar_Model_Results_RS' + datetime.datetime.now().strftime("%Y%m%d_%H%M")) #BayessianOptimizasyon classından instance oluştur.
-        tuner.search_space_summary()
-        tuner.search(self.X_train,self.y_train)

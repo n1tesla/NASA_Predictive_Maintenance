@@ -4,9 +4,8 @@ import numpy as np
 # before breaking cycles
 
 class DATA_PREPARATION:
-    def __init__(self,df_train,df_test,features:list,id_features:list,window_size:int,stride_size:int):
-        self.df_train=df_train
-        self.df_test=df_test
+    def __init__(self,features:list,id_features:list,window_size:int,stride_size:int):
+
         self.features=features
         self.id_features=id_features
         self.window_size=window_size
@@ -22,7 +21,6 @@ class DATA_PREPARATION:
         self.df_train.loc[:,self.features+['cycle_norm']]=standard_scaler.fit_transform(self.df_train.loc[:,self.features+['cycle_norm']].values)
         self.df_test['cycle_norm']=self.df_test['time_in_cycles']
         self.df_test.loc[:,self.features+['cycle_norm']]=standard_scaler.transform((self.df_test.loc[:,self.features+['cycle_norm']].values))
-
 
         return standard_scaler
 
@@ -60,7 +58,7 @@ class DATA_PREPARATION:
 
         WindowedX=np.concatenate(WindowedX,axis=0)
         WindowedY=np.concatenate(WindowedY,axis=0)
-        return WindowedX,WindowedY
+        return [WindowedX,WindowedY]
     def extract_window(self,arr,size,stride):
         examples=[]
         min_len=size-1
@@ -78,16 +76,23 @@ class DATA_PREPARATION:
             # examples.append(arr_2[i])
         return np.array(examples)
 
-    def create_dataset(self):
+
+    def create_dataset(self,fd_001_train,fd_001_test,RUL_1):
+        self.df_train = fd_001_train.loc[:, self.id_features + self.features]
+        self.df_test = fd_001_test.loc[:, self.id_features + self.features]
+        self.df_train = add_rul_column(self.df_train)
+        self.df_test, self.df_truth = extract_max_rul(self.df_test, RUL_1)
+
         self.dataset_dict['df_train']=self.df_train
-        # self.dataset_dict['df_val']=None
-        # self.dataset_dict['df_test']=None
-        self.scale_data()
+        self.dataset_dict['df_test']=self.df_test
+        self.dataset_dict['df_truth']=self.df_truth
+        # df_train=convert_rul_to_label(df_train)
+        # df_test=convert_rul_to_label(df_test)
+        scaler=self.scale_data()
         for k,v in self.dataset_dict.items():
-            self.dataset_dict[k]=self.SlidingWindow(v)
-
-
-
+            if k in ['df_train','df_test']:
+                self.dataset_dict[k]=self.SlidingWindow(v)
+        return self.dataset_dict,scaler
 
 def add_rul_column(data, factor = 0):
     df = data.copy()
@@ -99,18 +104,19 @@ def add_rul_column(data, factor = 0):
     df.drop(columns=['max'],inplace = True)
     return df[df['time_in_cycles'] > factor]
 
-def extract_max_rul(test_df,df_truth):
-    rul = pd.DataFrame(test_df.groupby('unit_number')['time_in_cycles'].max()).reset_index()
-    rul.columns = ['unit_number','max']
+def extract_max_rul(df_test,df_truth):
 
-    rul = pd.DataFrame(test_df.groupby('unit_number')['time_in_cycles'].max()).reset_index()
+    rul = pd.DataFrame(df_test.groupby('unit_number')['time_in_cycles'].max()).reset_index()
     rul.columns = ['unit_number','max']
     df_truth.columns = ['more']
     df_truth['unit_number'] = df_truth.index + 1
     df_truth['max'] = rul['max'] + df_truth['more'] # adding true-rul vlaue + max cycle of test data set w.r.t MID
     df_truth.drop('more', axis=1, inplace=True)
 
-    return df_truth
+    df_test = df_test.merge(df_truth, on=['unit_number'], how='left')
+    df_test['RUL'] = df_test['max'] - df_test['time_in_cycles']
+    df_test.drop('max', axis=1, inplace=True)
+    return df_test,df_truth
 
 def read_data():
     import os

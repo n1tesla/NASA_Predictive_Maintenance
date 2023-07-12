@@ -43,7 +43,7 @@ from keras.models import Model
 from keras.optimizers import RMSprop
 # from metrics import evaluate
 
-class LSTM_regression_tuner(HyperModel):
+class LSTM_regression_model(HyperModel):
     def __init__(self,input_shape,lr,nb_output):
         self.input_shape=input_shape
         self.lr=lr
@@ -51,17 +51,17 @@ class LSTM_regression_tuner(HyperModel):
 
     def build(self,hp):
         input_layer=Input(self.input_shape)
-        lstm1=LSTM(units=hp.Choice(f"LSTM_1_units",values=[64,128,256]),return_sequences=True)(input_layer)
-        dropout1=Dropout(rate=hp.Flaot(f"Dropout_1_rate",values=[0.2,0.3,0.4,0.5]))(lstm1)
-        lstm2 = LSTM(units=hp.Choice(f"LSTM_2_units", values=[64, 128, 256]), return_sequences=False)(dropout1)
-        dropout2=Dropout(rate=hp.Flaot(f"Dropout_2_rate",min_value=0.1,max_value=0.8))(lstm2)
+        lstm1=LSTM(units=hp.Choice(f"LSTM_1_units",values=[64,128,256]),return_sequences=True)(input_layer) #128
+        dropout1=Dropout(rate=hp.Float(f"Dropout_1_rate",min_value=0.1,max_value=0.6))(lstm1)   #0.55
+        lstm2 = LSTM(units=hp.Choice(f"LSTM_2_units", values=[64, 128, 256]), return_sequences=False)(dropout1) #256
+        dropout2=Dropout(rate=hp.Float(f"Dropout_2_rate",min_value=0.1,max_value=0.6))(lstm2)   #031
         output_layer=Dense(units=hp.Choice(f"Dense_output",values=[self.nb_output]))(dropout2)
-        activation=Activation(activation=hp.Choice(f"activation_function",values=['linear','relu','tanh','sigmoid']))(output_layer)
+        activation=Activation(activation=hp.Choice(f"activation_function",values=['linear','relu','tanh','sigmoid']))(output_layer) #linear
         model=Model(inputs=input_layer,outputs=output_layer)
         model.compile(loss='mean_squared_error',optimizer=RMSprop(learning_rate=self.lr),metrics=['mae',r2_keras])
         return model
 
-
+import keras.backend as K
 def r2_keras(y_true, y_pred):
     """Coefficient of Determination
     """

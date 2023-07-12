@@ -1,11 +1,9 @@
 import os
 import datetime
-
 import pandas as pd
-
 from preprocessing.prepare_data import convert_rul_to_label
 import numpy as np
-
+from utils import utils
 
 
 
@@ -14,15 +12,23 @@ from keras_tuner.tuners import BayesianOptimization
 from model.lstm import LSTM_regression_model
 import tensorflow as tf
 class LSTM:
-    def __init__(self,X_train,y_train,lr:float,max_trials:int,batch_size:int,epochs=5):
+    def __init__(self,X_train,y_train,lr:float,max_trials:int,batch_size:int,epochs=5,run_path:str,observation_name:str,start_time:str):
         self.X_train=X_train
         self.y_train=y_train
         self.lr=lr
         self.max_trials=max_trials
         self.batch_size=batch_size
         self.epochs=epochs
+        self.observation_name=observation_name
+        self.start_time=start_time
+        self.run_path=run_path
 
     def search_hyper_param(self):
+        models_dir=os.path.join(self.run_path,'models')
+        plots_path=os.path.join(self.run_path,'plots')
+        utils.make_dir(models_dir)
+        utils.make_dir(plots_path)
+
         input_shape=self.X_train.shape[1:]
         hypermodel=LSTM_regression_model(input_shape,self.lr,1)
         early_stop=tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=5)
@@ -38,21 +44,17 @@ class LSTM:
         df_batch_results=pd.DataFrame([])
 
         for i,trial in enumerate(best_hps):
-
+            hp_config = {}
+            num_run_model=f"{self.observation_name}_{self.lr}_{self.start_time[-4:]}_{i}"
+            model_path=os.path.join(models_dir,num_run_model)
+            utils.make_dir(model_path)
             model=tuner.hypermodel.build(trial)
             history=model.fit(self.X_train,self.y_train,validation_split=0.2)
             model.save("saved_model/my_model")
 
-
-
-
-
-
-
-
-
-
-
+            hp_config={}
+            hp_config['lr']=self.lr
+            # hp_config[]
 
 
 

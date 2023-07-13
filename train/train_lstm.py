@@ -51,13 +51,17 @@ class LSTM:
             utils.make_dir(model_path)
             model=tuner.hypermodel.build(trial)
             history=model.fit(self.X_train,self.y_train,validation_split=0.2)
-            model.save("saved_model/my_model")
+            model.save(model_path)
 
             hp_config={}
             hp_config['lr']=self.lr
             hp_config.update(trial.values)
 
-            scores_test,y_pred_test,loss,MAE,R2=evaluate.tensorflow_models(model,self.dataset_dict,i,hp_config)
+            scores_test,y_pred_test,loss,MAE,R2,df_result=evaluate.tensorflow_models(model,self.dataset_dict,i,hp_config)
+            print(f"scores_test: {scores_test} \n")
+            print(f"y_pred_test: {y_pred_test} \n")
+            print(f"df_result: {df_result}")
+
 
             # hp_config[]
 

@@ -53,7 +53,9 @@ def tensorflow_models(model,dataset_dict,model_index,hp_config):
         y_pred_test=model.predict(X_test)
 
         df_result['model_no']=model_index
-        df_result.loc[:,]=[]
+        df_result.loc[:,k]=[MAE]
+    for k2,v2 in hp_config.items():
+        df_result.loc[:,k2]=[v2]
 
 
-    return scores_test,y_pred_test,loss,MAE,R2
+    return scores_test,y_pred_test,loss,MAE,R2,df_result

@@ -4,7 +4,7 @@ import pandas as pd
 from preprocessing.prepare_data import convert_rul_to_label
 import numpy as np
 from utils import utils
-
+from metrics import evaluate
 
 
 import keras_tuner
@@ -12,7 +12,7 @@ from keras_tuner.tuners import BayesianOptimization
 from model.lstm import LSTM_regression_model
 import tensorflow as tf
 class LSTM:
-    def __init__(self,X_train,y_train,lr:float,max_trials:int,batch_size:int,epochs=5,run_path:str,observation_name:str,start_time:str):
+    def __init__(self,X_train,y_train,lr:float,max_trials:int,batch_size:int,epochs,run_path:str,observation_name:str,start_time:str,dataset_dict:dict):
         self.X_train=X_train
         self.y_train=y_train
         self.lr=lr
@@ -22,6 +22,7 @@ class LSTM:
         self.observation_name=observation_name
         self.start_time=start_time
         self.run_path=run_path
+        self.dataset_dict=dataset_dict
 
     def search_hyper_param(self):
         models_dir=os.path.join(self.run_path,'models')
@@ -54,6 +55,10 @@ class LSTM:
 
             hp_config={}
             hp_config['lr']=self.lr
+            hp_config.update(trial.values)
+
+            scores_test,y_pred_test,loss,MAE,R2=evaluate.tensorflow_models(model,self.dataset_dict,i,hp_config)
+
             # hp_config[]
 
 

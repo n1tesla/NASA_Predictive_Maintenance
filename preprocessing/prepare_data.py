@@ -4,13 +4,17 @@ import numpy as np
 # before breaking cycles
 
 class DATA_PREPARATION:
-    def __init__(self,features:list,id_features:list,window_size:int,stride_size:int):
+    def __init__(self,features:list,id_features:list,window_size:int,stride_size:int,df_train,df_test,df_rul):
 
         self.features=features
         self.id_features=id_features
         self.window_size=window_size
         self.stride_size=stride_size
         self.dataset_dict={}
+        self.df_train=df_train
+        self.df_test=df_test
+        self.df_rul=df_rul
+
 
     def scale_data(self):
         from sklearn.preprocessing import MinMaxScaler, StandardScaler
@@ -24,24 +28,7 @@ class DATA_PREPARATION:
 
         return standard_scaler
 
-    def gen_sequence(self,id_df, seq_length, seq_cols, slide_size):
 
-        data_matrix = id_df[seq_cols].values
-        num_elements = data_matrix.shape[0]
-
-        for start, stop in zip(range(0, num_elements - seq_length, slide_size),
-                               range(seq_length, num_elements, slide_size)):
-            yield data_matrix[start:stop, :]
-        # TODO: generate all sequence in gen_sequence
-
-    def gen_labels(self,id_df, seq_length, label, slide_size):
-        labels = []
-        data_matrix = id_df[label].values
-        num_elements = data_matrix.shape[0]
-
-        for i in range(seq_length, num_elements, slide_size):
-            labels.append(data_matrix[i])
-        return np.array(labels)
 
     def SlidingWindow(self,df):
         WindowedX,WindowedY=[],[]
@@ -77,11 +64,11 @@ class DATA_PREPARATION:
         return np.array(examples)
 
 
-    def create_dataset(self,fd_001_train,fd_001_test,RUL_1):
-        self.df_train = fd_001_train.loc[:, self.id_features + self.features]
-        self.df_test = fd_001_test.loc[:, self.id_features + self.features]
+    def create_dataset(self):
+        self.df_train = self.df_train.loc[:, self.id_features + self.features]
+        self.df_test = self.df_test.loc[:, self.id_features + self.features]
         self.df_train = add_rul_column(self.df_train)
-        self.df_test, self.df_truth = extract_max_rul(self.df_test, RUL_1)
+        self.df_test, self.df_truth = extract_max_rul(self.df_test, self.df_rul)
 
         self.dataset_dict['df_train']=self.df_train
         self.dataset_dict['df_test']=self.df_test
@@ -150,8 +137,6 @@ def convert_rul_to_label(df,w1=30,w0=15):
     df.loc[df['RUL'] <= w0, 'label2'] = 2
     return df
 
-
-
     #TODO generate all labels under gen_labels function
     # label_gen = [gen_labels(train_df[train_df['unit_number']==id], sequence_length, ['RUL'])
     #              for id in train_df['unit_number'].unique()]
@@ -160,4 +145,21 @@ def convert_rul_to_label(df,w1=30,w0=15):
 
 
 
+def gen_sequence(id_df, seq_length, seq_cols, slide_size):
 
+    data_matrix = id_df[seq_cols].values
+    num_elements = data_matrix.shape[0]
+
+    for start, stop in zip(range(0, num_elements - seq_length, slide_size),
+                           range(seq_length, num_elements, slide_size)):
+        yield data_matrix[start:stop, :]
+    # TODO: generate all sequence in gen_sequence
+
+def gen_labels(id_df, seq_length, label, slide_size):
+    labels = []
+    data_matrix = id_df[label].values
+    num_elements = data_matrix.shape[0]
+
+    for i in range(seq_length, num_elements, slide_size):
+        labels.append(data_matrix[i])
+    return np.array(labels)

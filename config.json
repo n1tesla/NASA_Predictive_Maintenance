@@ -1,0 +1,12 @@
+{
+  "DATA":{
+    "window_size": 16,
+    "stride_size": 2
+  },
+  "MODEL": {
+    "batch_size": 128,
+    "max_trials": 2,
+    "epochs": 5,
+    "lr_list":[1e-4,1e-3]
+  }
+}

@@ -23,3 +23,9 @@ def config_creator(features,scaler,window_size,stride):
     config['model_param'] = {'window_size': window_size, 'stride': stride}
     config["features"]={'features':features}
     return config
+def config_reader():
+    config=ConfigParser()
+    config.read('config.json')
+    config.get('DATA','window_size')
+    config.get('DATA','stride_size')
+

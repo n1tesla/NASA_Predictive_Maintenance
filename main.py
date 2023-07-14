@@ -1,6 +1,5 @@
 import pandas as pd
 from joblib import dump
-
 from preprocessing.prepare_data import read_data,add_rul_column,extract_max_rul,convert_rul_to_label, DATA_PREPARATION
 from train.train_lstm import LSTM
 import os
@@ -46,9 +45,9 @@ for l,lr in enumerate(lr_list):
     make_dir(run_path)
     data_path=run_path+"\\data"
     make_dir(data_path)
-    preparation=DATA_PREPARATION(features,id_features,window_size,stride_size)
+    preparation=DATA_PREPARATION(features,id_features,window_size,stride_size,fd_001_train,fd_001_test,RUL_1)
 
-    dataset_dict,scaler=preparation.create_dataset(fd_001_train,fd_001_test,RUL_1)
+    dataset_dict,scaler=preparation.create_dataset()
 
     dump(scaler,open(os.path.join(run_path+"\\data","scaler.bin"),"wb"))
     X_train,y_train=dataset_dict['df_train'][0],dataset_dict['df_train'][1]

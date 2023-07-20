@@ -12,13 +12,13 @@ from keras_tuner.tuners import BayesianOptimization
 from model.lstm import LSTM_regression_model
 import tensorflow as tf
 class LSTM:
-    def __init__(self,X_train,y_train,lr:float,max_trials:int,batch_size:int,epochs,run_path:str,observation_name:str,start_time:str,dataset_dict:dict):
+    def __init__(self,X_train,y_train,config,lr:float,run_path:str,observation_name:str,start_time:str,dataset_dict:dict):
         self.X_train=X_train
         self.y_train=y_train
         self.lr=lr
-        self.max_trials=max_trials
-        self.batch_size=batch_size
-        self.epochs=epochs
+        self.max_trials=config["MODEL"]["max_trials"]
+        self.batch_size=config["MODEL"]["batch_size"]
+        self.epochs=config["MODEL"]["epochs"]
         self.observation_name=observation_name
         self.start_time=start_time
         self.run_path=run_path

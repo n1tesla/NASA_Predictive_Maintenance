@@ -4,16 +4,12 @@ import numpy as np
 # before breaking cycles
 
 class DATA_PREPARATION:
-    def __init__(self,features:list,id_features:list,window_size:int,stride_size:int,df_train,df_test,df_rul):
-
-        self.features=features
-        self.id_features=id_features
-        self.window_size=window_size
-        self.stride_size=stride_size
+    def __init__(self,config):
+        self.features=config["DATA"]["features"]
+        self.id_features=config["DATA"]["id_features"]
+        self.window_size=config["DATA"]["window_size"]
+        self.stride_size=config["DATA"]["stride_size"]
         self.dataset_dict={}
-        self.df_train=df_train
-        self.df_test=df_test
-        self.df_rul=df_rul
 
 
     def scale_data(self):
@@ -28,8 +24,6 @@ class DATA_PREPARATION:
 
         return standard_scaler
 
-
-
     def SlidingWindow(self,df):
         WindowedX,WindowedY=[],[]
         UniqueIds=df['unit_number'].unique()
@@ -42,10 +36,10 @@ class DATA_PREPARATION:
             if SplitDataX.shape[0]>=self.window_size:
                 WindowedX.append(self.extract_window(SplitDataX,self.window_size,self.stride_size))
                 WindowedY.append(self.extract_labels(SplitDataY,self.window_size,self.stride_size))
-
         WindowedX=np.concatenate(WindowedX,axis=0)
         WindowedY=np.concatenate(WindowedY,axis=0)
         return [WindowedX,WindowedY]
+
     def extract_window(self,arr,size,stride):
         examples=[]
         min_len=size-1
@@ -65,6 +59,7 @@ class DATA_PREPARATION:
 
 
     def create_dataset(self):
+        self.df_train, self.df_test,  self.df_rul = read_data()
         self.df_train = self.df_train.loc[:, self.id_features + self.features]
         self.df_test = self.df_test.loc[:, self.id_features + self.features]
         self.df_train = add_rul_column(self.df_train)
@@ -80,6 +75,31 @@ class DATA_PREPARATION:
             if k in ['df_train','df_test']:
                 self.dataset_dict[k]=self.SlidingWindow(v)
         return self.dataset_dict,scaler
+
+def read_data():
+    import os
+    cwd = os.getcwd()
+
+    columns = ['unit_number', 'time_in_cycles', 'setting_1', 'setting_2', 'TRA', 'FanInTemp', 'LPCompOT',
+               'HPCompOT',
+               'LPTurbineOT', 'FanInP', 'BypassDuctP', 'HPCompOP', 'PhyFanSpeed', 'PhyCoreSpeed',
+               'EngPreRatio', 'HPCOStaticPre', 'RFuelFlow', 'CorrectedFanSpeed', 'CorrectedCoreSpeed',
+               'BypassRatio',
+               'BurnerFuelAirRatio', 'BleedEnthalpy', 'ReqFanSpeed', 'ReqFanConvSpeed', 'HPTurbineCoolAirFlow',
+               'LPTurbineAirFlow']
+    fd_001_train = pd.read_csv(cwd + r"\CMaps\train_FD001.txt", sep=" ", header=None)
+    fd_001_test = pd.read_csv(cwd + r"\CMaps\test_FD001.txt", sep=" ", header=None)
+    RUL_1 = pd.read_csv(cwd + r"\CMaps\RUL_FD001.txt", sep=" ", header=None)
+
+    # Nan columns
+    fd_001_train.drop(columns=[26, 27], inplace=True)
+    fd_001_test.drop(columns=[26, 27], inplace=True)
+    RUL_1.drop(columns=[1], inplace=True)
+
+    fd_001_train.columns = columns
+    fd_001_test.columns = columns
+
+    return fd_001_train, fd_001_test, RUL_1
 
 def add_rul_column(data, factor = 0):
     df = data.copy()
@@ -105,28 +125,7 @@ def extract_max_rul(df_test,df_truth):
     df_test.drop('max', axis=1, inplace=True)
     return df_test,df_truth
 
-def read_data():
-    import os
-    cwd=os.getcwd()
 
-    columns = ['unit_number', 'time_in_cycles', 'setting_1', 'setting_2', 'TRA', 'FanInTemp', 'LPCompOT', 'HPCompOT',
-               'LPTurbineOT', 'FanInP', 'BypassDuctP', 'HPCompOP', 'PhyFanSpeed', 'PhyCoreSpeed',
-               'EngPreRatio', 'HPCOStaticPre', 'RFuelFlow', 'CorrectedFanSpeed', 'CorrectedCoreSpeed', 'BypassRatio',
-               'BurnerFuelAirRatio', 'BleedEnthalpy', 'ReqFanSpeed', 'ReqFanConvSpeed', 'HPTurbineCoolAirFlow',
-               'LPTurbineAirFlow']
-    fd_001_train=pd.read_csv(cwd+r"\CMaps\train_FD001.txt",sep=" ",header=None)
-    fd_001_test = pd.read_csv(cwd+r"\CMaps\test_FD001.txt", sep=" ", header=None)
-    RUL_1=pd.read_csv(cwd+r"\CMaps\RUL_FD001.txt",sep=" ",header=None)
-
-    #Nan columns
-    fd_001_train.drop(columns=[26, 27], inplace=True)
-    fd_001_test.drop(columns=[26, 27], inplace=True)
-    RUL_1.drop(columns=[1],inplace=True)
-
-    fd_001_train.columns=columns
-    fd_001_test.columns=columns
-
-    return fd_001_train,fd_001_test,RUL_1
 
 
 # we will only make use of "label1" for binary classification,

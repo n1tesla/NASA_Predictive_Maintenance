@@ -1,7 +1,10 @@
 {
   "DATA":{
     "window_size": 16,
-    "stride_size": 2
+    "stride_size": 2,
+    "features":["LPCompOT", "HPCompOT","LPTurbineOT", "HPCompOP", "PhyFanSpeed", "PhyCoreSpeed", "HPCOStaticPre", "RFuelFlow",
+          "CorrectedFanSpeed", "BypassRatio", "BleedEnthalpy", "HPTurbineCoolAirFlow","LPTurbineAirFlow"],
+    "id_features": ["unit_number", "time_in_cycles"]
   },
   "MODEL": {
     "batch_size": 128,
@@ -10,3 +13,15 @@
     "lr_list":[1e-4,1e-3]
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
